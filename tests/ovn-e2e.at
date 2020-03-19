@@ -8922,8 +8922,10 @@ echo "---------------------"
 ovn-sbctl list chassis
 ovn-sbctl list encap
 echo "---------------------"
-echo "------ Gateway_Chassis dump (SBDB) -------"
-ovn-sbctl list Gateway_Chassis
+echo "------ ha_Chassis_Group dump (SBDB) -------"
+ovn-sbctl list HA_Chassis_Group
+echo "------ ha_Chassis dump (SBDB) -------"
+ovn-sbctl list HA_Chassis
 echo "------ Port_Binding chassisredirect -------"
 ovn-sbctl find Port_Binding type=chassisredirect
 echo "-------------------------------------------"
