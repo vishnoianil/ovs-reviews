@@ -343,7 +343,10 @@ sb.Out_Port_Binding(.uuid_name          = "cr" ++ uuid2name(lrp._uuid),
  *
  * These tables track the sb.Chassis that a packet that traverses logical
  * router 'lr_uuid' can end up at (or start from).  This is used for
- * sb.Out_HA_Chassis_Group's ref_chassis column. */
+ * sb.Out_HA_Chassis_Group's ref_chassis column.
+ *
+ * RefChassisSet0 has a row for each logical router that actually references a
+ * chassis.  RefChassisSet has a row for every logical router. */
 relation RefChassis(lr_uuid: uuid, chassis_uuid: uuid)
 RefChassis(lr_uuid, chassis_uuid) :-
     ReachableLogicalRouter(lr_uuid, lr2_uuid),
@@ -352,24 +355,29 @@ RefChassis(lr_uuid, chassis_uuid) :-
     nb.Logical_Switch_Port(._uuid = lsp_uuid, .name = lsp_name),
     sb.Port_Binding(.logical_port = lsp_name, .chassis = chassis_uuids),
     var chassis_uuid = FlatMap(chassis_uuids).
-relation RefChassisSet(lr_uuid: uuid, chassis_uuids: Set<uuid>)
-RefChassisSet(lr_uuid, chassis_uuids) :-
+relation RefChassisSet0(lr_uuid: uuid, chassis_uuids: Set<uuid>)
+RefChassisSet0(lr_uuid, chassis_uuids) :-
     RefChassis(lr_uuid, chassis_uuid),
     var chassis_uuids = Aggregate((lr_uuid), group2set(chassis_uuid)).
+relation RefChassisSet(lr_uuid: uuid, chassis_uuids: Set<uuid>)
+RefChassisSet(lr_uuid, chassis_uuids) :-
+    RefChassisSet0(lr_uuid, chassis_uuids).
+RefChassisSet(lr_uuid, set_empty()) :-
+    nb.Logical_Router(._uuid = lr_uuid),
+    not RefChassisSet0(lr_uuid, _).
 
 /* HA_Chassis_Group and HA_Chassis. */
-sb.Out_HA_Chassis_Group(uuid_name, name, ha_chassis, ref_chassis,
-                        external_ids) :-
-    HAChassis(lr_uuid, chassis_name, priority, external_ids),
+sb.Out_HA_Chassis_Group(uuid_name, name, ha_chassis, ref_chassis, eids) :-
+    HAChassis(lr_uuid, chassis_name, priority, eids),
     chassis_rec in sb.Chassis(.name = chassis_name),
     var ha_chassis_uuid_name = ha_chassis_uuid_name(chassis_rec._uuid),
     var ha_chassis = Aggregate((lr_uuid), group2set(ha_chassis_uuid_name)),
     var uuid_name = ha_chassis_group_uuid_name(lr_uuid),
-    HAChassisGroup(lr_uuid, name, external_ids),
+    HAChassisGroup(lr_uuid, name, eids),
     RefChassisSet(lr_uuid, ref_chassis).
 
-sb.Out_HA_Chassis(ha_chassis_uuid_name, chassis, priority, external_ids) :-
-    HAChassis(lr_uuid, chassis_name, priority, external_ids),
+sb.Out_HA_Chassis(ha_chassis_uuid_name, chassis, priority, eids) :-
+    HAChassis(lr_uuid, chassis_name, priority, eids),
     chassis_rec in sb.Chassis(.name = chassis_name),
     var ha_chassis_uuid_name = ha_chassis_uuid_name(chassis_rec._uuid),
     DistributedGatewayPort(dgp_lrp, lr_uuid),
